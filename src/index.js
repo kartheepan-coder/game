@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { Suspense, useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { SVGLoader } from 'three-stdlib'
-import { MapControls } from '@react-three/drei'
+import { MapControls, am } from '@react-three/drei'
 import './styles.css'
 
 const hoveredCursor =
@@ -13,13 +13,14 @@ const defaultCursor =
 
 function Cell({ color, shape, fillOpacity }) {
   const [hovered, hover] = useState(false)
-  useEffect(() => void (document.body.style.cursor = hovered ? `url('${hoveredCursor}'), pointer` : `url('${defaultCursor}'), auto`), [
-    hovered
-  ])
+  useEffect(
+    () => void (document.body.style.cursor = hovered ? `url('${hoveredCursor}'), pointer` : `url('${defaultCursor}'), auto`),
+    [hovered]
+  )
   return (
     <mesh onPointerOver={(e) => hover(true)} onPointerOut={() => hover(false)}>
-      <meshBasicMaterial color={hovered ? 'hotpink' : color} opacity={fillOpacity} depthWrite={false} transparent />
-      <shapeBufferGeometry args={[shape]} />
+      <meshBasicMaterial color={hovered ? '#0A7AB9' : color} opacity={fillOpacity} depthWrite={false} transparent />
+      <shapeBufferGeometry args={[shape, 32]} />
     </mesh>
   )
 }
@@ -37,8 +38,19 @@ function Svg({ url }) {
     ref.current.position.set(-sphere.center.x, -sphere.center.y, 0)
   }, [])
 
+  useLayoutEffect(() => {
+    if (ref.current) {
+      // Calculate the bounding sphere to ensure it is centered
+      const sphere = new THREE.Box3().setFromObject(ref.current).getBoundingSphere(new THREE.Sphere())
+      ref.current.position.set(sphere.center.x, sphere.center.y, 0)
+
+      // Log the position of the SVG group
+      console.log('SVG Position:', ref.current.position)
+    }
+  }, [])
+
   return (
-    <group ref={ref}>
+    <group ref={ref} scale={[1, -1, 1]}>
       {shapes.map((props, index) => (
         <Cell key={props.shape.uuid} {...props} />
       ))}
@@ -48,7 +60,7 @@ function Svg({ url }) {
 
 function App() {
   return (
-    <Canvas frameloop="demand" orthographic camera={{ position: [0, 0, 50], zoom: 2, up: [0, 0, 1], far: 10000 }}>
+    <Canvas antialias frameloop="demand" orthographic camera={{ position: [0, 0, 50], zoom: 2, up: [0, 0, 1], far: 10000 }}>
       <Suspense fallback={null}>
         <Svg url="/map.svg" />
       </Suspense>
